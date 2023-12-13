@@ -10,7 +10,7 @@ def calculate_std_dev(_data):
     """Calculates standard deviation"""
 
     if len(_data) == 0:
-        return float('inf')
+        return 0
 
     mean = sum(_data) / len(_data)
     sum_squared_diff = sum((x - mean) ** 2 for x in _data)
@@ -24,7 +24,17 @@ def remove_outliers(_impulses, _max_std_dev):
 
     if len(_impulses) < 2:
         return _impulses
-
+    
+    _sub_impulses = []
+    for _begin_index in range(len(_impulses) - 1):
+        for _end_index in range(_begin_index + 1, len(_impulses)):
+            _sub_impulses.append(_impulses[_begin_index:_end_index + 1])
+            
+    _sub_impulses = sorted(_sub_impulses, key=len, reverse=True)
+    for _sub_impulse in _sub_impulses:
+        if calculate_std_dev([_impulse[1] for _impulse in _sub_impulse]) < _max_std_dev:
+            return _sub_impulse
+        
     _std_dev = calculate_std_dev([_impulse[1] for _impulse in _impulses])
     while _std_dev > _max_std_dev and len(_impulses) > 2:
         _impulses = _impulses[1:-1]
@@ -49,10 +59,10 @@ def divide_into_components(_times, _forces, _baseline, _min_meantime):
 
     _sign_changes = [0]
     for _force_index in range(len(_forces) - 1):
-        if _forces[_force_index] < baseline < _forces[_force_index + 1]:
+        if _forces[_force_index] < _baseline < _forces[_force_index + 1]:
             if (_times[_force_index] - _sign_changes[-1]) > _min_meantime:
                 _sign_changes.append((_times[_force_index] + _times[_force_index + 1]) / 2)
-        elif _forces[_force_index] > baseline > _forces[_force_index + 1]:
+        elif _forces[_force_index] > _baseline > _forces[_force_index + 1]:
             if (_times[_force_index] - _sign_changes[-1]) > _min_meantime:
                 _sign_changes.append((_times[_force_index] + _times[_force_index + 1]) / 2)
         else:
@@ -119,15 +129,15 @@ def plot_data(_times, _forces, _plot_interval_size, _baseline, _impulses,
 
         for x in _impulses:
             if _times[begin] <= x <= _times[end]:
-                plt.axvline(x=x, color='g', linestyle='--')
+                plt.axvline(x=x, color='green', linestyle='--')
 
         plt.scatter([minimum[0] for minimum in _minimums if _times[begin] <= minimum[0] <= _times[end]],
                     [minimum[1] for minimum in _minimums if _times[begin] <= minimum[0] <= _times[end]],
-                    color='r', s=20)
+                    color='red', s=20)
 
         plt.scatter([maximum[0] for maximum in _maximums if _times[begin] <= maximum[0] <= _times[end]],
                     [maximum[1] for maximum in _maximums if _times[begin] <= maximum[0] <= _times[end]],
-                    color='r', s=20)
+                    color='orange', s=20)
 
         _fpi = [element for sublist in _positive_impulses for element in sublist]    # _flatten_positive_impulses
 
@@ -135,7 +145,7 @@ def plot_data(_times, _forces, _plot_interval_size, _baseline, _impulses,
                     [_fpi[1] for _fpi in _fpi if _times[begin] <= _fpi[0] <= _times[end]],
                     color='cyan', s=20)
 
-        plt.axhline(y=_baseline, color='r')
+        plt.axhline(y=_baseline, color='magenta')
 
         plt.xlabel('Time [s]')
         plt.ylabel('Force [N]')
@@ -147,7 +157,7 @@ if __name__ == '__main__':
     baseline = 0.0
     plot_interval_size = 200
     min_meantime = 0.300
-    max_std_dev = 0.05
+    max_std_dev = 0.02
 
     sign_changes, components = divide_into_components(times, forces, baseline, min_meantime)
     minimums, maximums = find_extremes(components)
